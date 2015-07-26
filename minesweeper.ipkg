@@ -1,0 +1,13 @@
+package minesweeper
+
+-- Minesweeper
+-- by Ross Meikleham 2015
+
+opts = "-p effects"
+sourcedir = src
+modules = Main, Minesweeper.Board, Minesweeper.Game, Minesweeper.REPL
+
+
+main = Main
+              
+executable = minesweeper

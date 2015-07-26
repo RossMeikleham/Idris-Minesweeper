@@ -1,4 +1,3 @@
-
 module Minesweeper.Board
 
 import Data.Vect 
