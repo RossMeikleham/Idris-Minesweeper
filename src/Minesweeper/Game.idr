@@ -19,3 +19,13 @@ getSetupDetails Hard = ((MkPos 30 16), 99)
 
 --data GameState = MkGameState Board GState
 
+--Type GameState = 
+
+
+-- | Reveal the square for the given position, if out
+--   of bounds or already revealed returns
+--   error message, otherwise returns the updated
+--   GameState
+--reveal : Pos -> Either String GameState
+--reveal 
+

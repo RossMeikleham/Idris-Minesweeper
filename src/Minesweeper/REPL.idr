@@ -109,7 +109,7 @@ mainMenu = do
   case option of
     Play => difficultyMenu
     Help => putStrLn help >>= \_ => mainMenu
-    Quit => putStrLn "Goodbye!"
+    Quit => putStrLn "Goodbye :)"
     Invalid s => putStrLn (invalid s) >>= \_ => mainMenu
 
 

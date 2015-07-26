@@ -181,7 +181,23 @@ createBoard cols rows mines = do
                     calculateState' res xs
 
 
+-- | Determines if the Board is in a "Win" State
+--   i.e. all hidden squares are mines
+win : Board m n -> Bool
+win (MkBoard v) = foldl (\b, v => (checkRow v) && b) True v -- Check each row matches win condition
+  where checkRow : Vect n Square -> Bool 
+        checkRow v = foldl (\b, (MkSquare vis st) => case (vis, st) of
+                      (Revealed, Safe m) => b -- All safe squares must be revealed
+                      (Hidden, Mine) => b -- Hidden mines are still a win condition
+                      _ => False) True v
 
+-- | Determines if the Board is in a "Lose" State
+--   i.e. a revealed square is a mine
+lose : Board m n -> Bool
+lose (MkBoard v) = foldl(\b, v => (checkRow v) || b) False v
+  where checkRow v = foldl (\b, (MkSquare vis st) => case (vis, st) of
+                      (Revealed, Mine) => True -- If any mines revealed, the player loses
+                      _ => False) False v 
  
 
 -- | Given x and y dimensions and a vector containing
