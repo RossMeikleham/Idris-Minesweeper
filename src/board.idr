@@ -205,7 +205,9 @@ generateMine x y mines = do
             if nextPos `elem` mines
               then placeRightMine nextPos 
               else nextPos
-
+           
+           -- Modulo giving strange division by 0 runtime error,
+           -- so calculate next square to the right manually 
            where nextCol : Nat
                  nextCol = if (S col) == x then Z else (S col)
                  nextRow : Nat
@@ -221,16 +223,24 @@ generateMine x y mines = do
 --  if there are more mines than x * y spaces then Nothing is returned.
 --  To guarantee termination if a collision occurs then a mine is attempted
 --  to be placed to the right of the mine until a free space is hit
-generateMines : Nat -> Nat -> (n : Nat) -> {[RND]} Eff (Vect (n) Pos)
-generateMines x y nMines = rewrite (identity_proof nMines) in 
-                            (generateMines' nMines Nil)
+generateMines' : Nat -> Nat -> (n : Nat) -> {[RND]} Eff (Vect (n) Pos)
+generateMines' x y nMines = rewrite (identity_proof nMines) in 
+                            (generateMines'' nMines Nil)
  
-  where generateMines' : (m : Nat) -> (Vect k Pos) -> {[RND]} Eff (Vect (m + k)  Pos)
-        generateMines' Z v = return v
-        generateMines' {k} (S l) mines = do
+  where generateMines'' : (m : Nat) -> (Vect k Pos) -> {[RND]} Eff (Vect (m + k)  Pos)
+        generateMines'' Z v = return v
+        generateMines'' {k} (S l) mines = do
           mine <- generateMine x y mines 
           rewrite (plusSuccRightSucc l k) in 
-            generateMines' l (mine :: mines)     
+            generateMines'' l (mine :: mines)     
+
+generateMines : Nat -> Nat -> (n : Nat) -> {[RND]} Eff (Maybe (Vect n Pos))
+generateMines x y nMines = 
+  if (x * y < nMines) 
+    then return Nothing
+    else do
+      mines <- generateMines' x y nMines
+      return $ Just mines
 
         
 
@@ -245,12 +255,18 @@ test1 = putStrLn "test"
 
 main : IO()
 main = do 
-  mines <- run (generateMines 30 16 99)
-  putStrLn $ show mines
-  let board = createBoard 30 16 mines
-  case board of
-    Nothing => putStrLn "Error creating board"
-    Just b => putStrLn $ showRevealed b
+  let x = 30
+  let y = 16
+  let nMines = 99
+  mines <- run (generateMines x y nMines)
+  case mines of
+    Nothing => putStrLn "More mines than positions available"
+    Just m => do
+      putStrLn $ show m
+      let board = createBoard x y m
+      case board of
+        Nothing => putStrLn "Error creating board"
+        Just b => putStrLn $ showRevealed b
 
 
 
