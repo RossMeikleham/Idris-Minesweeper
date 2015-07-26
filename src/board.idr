@@ -108,11 +108,12 @@ replaceV = replaceV' Z
 --   of range returns nothing, if the square selected is
 --   a mine then the same Board is returned
 incBoardSquare : Nat -> Nat -> (Board rows cols) -> Maybe (Board rows cols)
-incBoardSquare {rows} y x (MkBoard v) = do
+incBoardSquare {rows} {cols} y x (MkBoard v) = do
   rowPos <- natToFin y rows 
   colPos <- natToFin x cols
-  let row = index rowPos v
+  let row  =index rowPos v
   let square = index colPos row
+
   let newSquare = case square of
     (MkSquare vis (Safe n)) => (MkSquare vis (Safe (S n)))
     sq => sq
@@ -126,36 +127,37 @@ incBoardSquare {rows} y x (MkBoard v) = do
 --   not incremented
 incAdjacentSquares : Pos -> (Board rows cols) -> Maybe (Board rows cols)
 incAdjacentSquares {rows} {cols} (MkPos x y) board = do
-  -- Increment squares to the left of the mine
-  leftSide <- if x > 0 
-    then do 
-      left <- incBoardSquare y (x - 1) board
-      topLeft <- if y > 0 then incBoardSquare (y - 1) (x - 1) left else return left
-      if y < (rows - 1) then incBoardSquare (y + 1) (x - 1) topLeft else return topLeft
-      
-    else return board
-  
-  -- Increment squares to the right side of the mine
-  rightSide <- if x < (cols + 1)
-    then do
-      right <- incBoardSquare y (x + 1) leftSide 
-      topRight <- if y > 0 then incBoardSquare (y - 1) (x + 1) right else return right
-      if y < (rows - 1) then incBoardSquare (y + 1) (x + 1) topRight else return topRight
+
+    -- Increment squares to the left of the mine
+    leftSide <- if x > 0 
+      then do 
+        left <- incBoardSquare y (x - 1) board
+        topLeft <- if y > 0 then incBoardSquare (y - 1) (x - 1) left else return left
+        if y < (rows - 1) then incBoardSquare (y + 1) (x - 1) topLeft else return topLeft
+        
+      else return board
     
-    else return leftSide
+    -- Increment squares to the right side of the mine
+    rightSide <- if x < (cols - 1)
+      then do
+        right <- incBoardSquare y (x + 1) leftSide 
+        topRight <- if y > 0 then incBoardSquare (y - 1) (x + 1) right else return right
+        if y < (rows - 1) then incBoardSquare (y + 1) (x + 1) topRight else return topRight
+      
+      else return leftSide
 
-  -- Increment squares above and below the mine
-  top <- if y > 0 then incBoardSquare (y - 1) x rightSide else return rightSide
-  bot <- if y < (rows - 1) then incBoardSquare (y + 1) x top else return top 
+    -- Increment squares above and below the mine
+    top <- if y > 0 then incBoardSquare (y - 1) x rightSide else return rightSide
+    bot <- if y < (rows - 1) then incBoardSquare (y + 1) x top else return top 
 
-  return bot
+    return top --bot
 
 
 
 -- | Given row and column  dimensions of board with mines generate 
 --   the board
-createBoard : (m : Nat) ->  (n : Nat) -> Vect k Pos -> Maybe (Board m n)
-createBoard rows cols mines = do
+createBoard : (n : Nat) ->  (m : Nat) -> Vect k Pos -> Maybe (Board m n)
+createBoard cols rows mines = do
       let initialBoard = MkBoard $ map (\row => generateRow row cols) (iterateV rows (+1) 0)
       calculateState initialBoard
 
@@ -188,23 +190,41 @@ createBoard rows cols mines = do
 --   in a position which isn't contained in the given vector
 generateMine : Nat -> Nat -> (Vect n Pos) -> {[RND]} Eff Pos
 generateMine x y mines = do
-  xPos <- rndInt 0 (toIntegerNat x)
+  xPos <- rndInt 0 (toIntegerNat x) 
   yPos <- rndInt 0 (toIntegerNat y)
   let mine = MkPos (fromIntegerNat xPos) (fromIntegerNat yPos)
 
   -- If position already taken then attempt to regenerate
   if mine `elem` mines 
-    then generateMine x y mines
+    then return $ placeRightMine mine 
     else return mine
   
   
+ where placeRightMine : Pos -> Pos
+       placeRightMine (MkPos col row) = 
+            if nextPos `elem` mines
+              then placeRightMine nextPos 
+              else nextPos
+
+           where nextCol : Nat
+                 nextCol = if (S col) == x then Z else (S col)
+                 nextRow : Nat
+                 nextRow = if nextCol == Z 
+                              then if ((S row) == y) then Z else (S row)
+                              else row
+                 nextPos = (MkPos nextCol nextRow)
+
+
 
 -- | Given x and y dimensions and number of mines to create 
 --   creates a vector containing positions of randomly placed mines.
+--  if there are more mines than x * y spaces then Nothing is returned.
+--  To guarantee termination if a collision occurs then a mine is attempted
+--  to be placed to the right of the mine until a free space is hit
 generateMines : Nat -> Nat -> (n : Nat) -> {[RND]} Eff (Vect (n) Pos)
 generateMines x y nMines = rewrite (identity_proof nMines) in 
                             (generateMines' nMines Nil)
-
+ 
   where generateMines' : (m : Nat) -> (Vect k Pos) -> {[RND]} Eff (Vect (m + k)  Pos)
         generateMines' Z v = return v
         generateMines' {k} (S l) mines = do
@@ -212,6 +232,7 @@ generateMines x y nMines = rewrite (identity_proof nMines) in
           rewrite (plusSuccRightSucc l k) in 
             generateMines' l (mine :: mines)     
 
+        
 
 showMines : Nat -> Nat -> Nat -> {[RND, STDIO]} Eff ()
 showMines x y nMines = do
@@ -224,8 +245,9 @@ test1 = putStrLn "test"
 
 main : IO()
 main = do 
-  mines <- run (generateMines 5 5 3)
-  let board = createBoard 5 5 mines
+  mines <- run (generateMines 30 16 99)
+  putStrLn $ show mines
+  let board = createBoard 30 16 mines
   case board of
     Nothing => putStrLn "Error creating board"
     Just b => putStrLn $ showRevealed b
