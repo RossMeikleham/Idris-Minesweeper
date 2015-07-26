@@ -1,8 +1,8 @@
 
-module Main  --Minesweeper.REPL
+-- | REPL for console version of Minesweeper
+module Minesweeper.REPL
 
-
-data Difficulty = Easy | Medium | Hard
+import Minesweeper.Game
 
 instance Show Difficulty where
   show Easy = "Easy"
@@ -115,7 +115,7 @@ mainMenu = do
 
 
 
-main : IO ()
-main = do
+repl : IO ()
+repl = do
   putStrLn intro
   mainMenu

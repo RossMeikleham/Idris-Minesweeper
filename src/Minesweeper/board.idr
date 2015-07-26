@@ -1,5 +1,5 @@
 
-module Main
+module Minesweeper.Board
 
 import Data.Vect 
 import Data.Fin
