@@ -5,7 +5,7 @@ package minesweeper
 
 opts = "-p effects"
 sourcedir = src
-modules = Main, Minesweeper.Board, Minesweeper.Game, Minesweeper.REPL
+modules = Main, Minesweeper.Board, Minesweeper.Game, Minesweeper.REPL, Minesweeper.Helper
 
 
 main = Main

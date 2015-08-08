@@ -36,11 +36,6 @@ data Board : Nat -> Nat -> Type where
    MkBoard : (Vect m (Vect n Square)) -> Board m n
 
 
---instance Show (Board rows cols) where
---  show {rows} {cols} (MkBoard v) = "test"
-   -- then "Empty"
-   -- else "test"
-
 strRepeat : Nat -> String -> String
 strRepeat Z s = ""
 strRepeat (S n) s = s ++ strRepeat n s
@@ -48,6 +43,30 @@ strRepeat (S n) s = s ++ strRepeat n s
 concatSV : Vect n String -> String
 concatSV Nil = ""
 concatSV (v :: vs) = v ++ (concatSV vs)
+
+
+-- | Display the board, hiding any hidden squares
+showBoard : (Board rows cols) -> String
+showBoard {rows} {cols} board = if rows == 0 
+  then "Empty"
+  else  firstRow ++ "\n" ++ (showRows board)
+ 
+  where firstRow = strRepeat (2 * cols + 1) "-" 
+        
+        showRows : (Board rows cols) -> String
+        showRows (MkBoard vs) = concatSV $ map (\v => (showRow v) ++ "\n") vs
+
+        where showRow : Vect k Square -> String
+              showRow v = "|" ++ rowStr ++ "\n" ++ endStr
+                where rowStr = concatSV $ map (\(MkSquare vis st) => case (vis, st) of
+                                    (Hidden, _) => "?|"
+                                    (Revealed, Mine) => "m|"
+                                    (Revealed, Safe Z) => " |"
+                                    (Revealed, Safe n) => (show n) ++ "|" ) v 
+
+                      -- Line under each Row
+                      endStr = (concatSV $ map (\_ => "--") v) ++ "-"
+
 
 -- | Display the board, revealing all hidden squares
 showRevealed : (Board rows cols) -> String
@@ -73,15 +92,15 @@ showRevealed {rows} {cols} board = if rows == 0
 
 
 -- | Prove n = plus n 0
-identity_proof : (n : Nat) -> n = plus n 0
-identity_proof Z = Refl
-identity_proof (S o) = rewrite identity_proof o in Refl 
+natPlusZ : (n : Nat) -> n = plus n 0
+natPlusZ Z = Refl
+natPlusZ (S o) = rewrite natPlusZ o in Refl 
 
 
 -- | Apply the given function (k - 1) times to a given value and return
 --   all the intermediate values as a vector
 iterateV : (k : Nat) -> (a -> a) -> a -> Vect k a
-iterateV k f b = rewrite (identity_proof k) in (reverse $ iterateV' k b Nil)
+iterateV k f b = rewrite (natPlusZ k) in (reverse $ iterateV' k b Nil)
   where iterateV' : (m : Nat) -> a -> (Vect n a) -> (Vect (m + n) a)
         iterateV' Z _ v = v
         iterateV' (S l) a v {n} = rewrite (plusSuccRightSucc l n) in 
@@ -183,22 +202,42 @@ createBoard cols rows mines = do
 
 -- | Determines if the Board is in a "Win" State
 --   i.e. all hidden squares are mines
-win : Board m n -> Bool
-win (MkBoard v) = foldl (\b, v => (checkRow v) && b) True v -- Check each row matches win condition
+checkWin : Board m n -> Bool
+checkWin (MkBoard v) = foldl (\b, v => (checkRow v) && b) True v -- Check each row matches win condition
   where checkRow : Vect n Square -> Bool 
         checkRow v = foldl (\b, (MkSquare vis st) => case (vis, st) of
                       (Revealed, Safe m) => b -- All safe squares must be revealed
-                      (Hidden, Mine) => b -- Hidden mines are still a win condition
-                      _ => False) True v
+                      (Hidden, Mine) => b  -- Hidden mines are still a win condition
+                      _ => b && False) True v
 
 -- | Determines if the Board is in a "Lose" State
 --   i.e. a revealed square is a mine
-lose : Board m n -> Bool
-lose (MkBoard v) = foldl(\b, v => (checkRow v) || b) False v
+checkLose : Board m n -> Bool
+checkLose (MkBoard v) = foldl(\b, v => (checkRow v) || b) False v
   where checkRow v = foldl (\b, (MkSquare vis st) => case (vis, st) of
-                      (Revealed, Mine) => True -- If any mines revealed, the player loses
-                      _ => False) False v 
+                      (Revealed, Mine) => True -- If any mines are revealed, the player loses
+                      _ => b || False) False v 
  
+
+-- Reveals the given position, returns the new Board state
+-- if a square is revealed, otherwise returns an error message
+-- if the square has already been revealed or it's out of bounds
+reveal : Pos -> Board rows cols -> Either String (Board rows cols)
+reveal (MkPos x y) (MkBoard v) = do
+  rowPos <- maybeToEither "Out Of Bounds." (natToFin y rows) 
+  colPos <- maybeToEither "Out Of Bounds." (natToFin x cols)
+  let row  =index rowPos v
+  let square = index colPos row
+  
+ 
+  case square of
+    (MkSquare Revealed _) => Left "Square has already been revealed"
+    (MkSquare Hidden sq) => do 
+        let newSq = MkSquare Revealed sq
+        return $ MkBoard (replaceV y (replaceV x newSq row) v)
+   
+    
+
 
 -- | Given x and y dimensions and a vector containing
 --   the positions of already generated mines, places a mine
@@ -239,8 +278,8 @@ generateMine x y mines = do
 --  To guarantee termination if a collision occurs then a mine is attempted
 --  to be placed to the right of the mine until a free space is hit
 generateMines' : Nat -> Nat -> (n : Nat) -> {[RND]} Eff (Vect (n) Pos)
-generateMines' x y nMines = rewrite (identity_proof nMines) in 
-                            (generateMines'' nMines Nil)
+generateMines' x y nMines = rewrite (natPlusZ nMines) in 
+                                generateMines'' nMines Nil
  
   where generateMines'' : (m : Nat) -> (Vect k Pos) -> {[RND]} Eff (Vect (m + k)  Pos)
         generateMines'' Z v = return v
@@ -263,25 +302,4 @@ showMines : Nat -> Nat -> Nat -> {[RND, STDIO]} Eff ()
 showMines x y nMines = do
   mines <- generateMines x y nMines
   putStrLn $ show mines 
-
-
-test1 : {[STDIO]} Eff ()
-test1 = putStrLn "test"
-
-main : IO()
-main = do 
-  let x = 30
-  let y = 16
-  let nMines = 99
-  mines <- run (generateMines x y nMines)
-  case mines of
-    Nothing => putStrLn "More mines than positions available"
-    Just m => do
-      putStrLn $ show m
-      let board = createBoard x y m
-      case board of
-        Nothing => putStrLn "Error creating board"
-        Just b => putStrLn $ showRevealed b
-
-
 
