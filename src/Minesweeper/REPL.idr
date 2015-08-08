@@ -73,7 +73,7 @@ parseGameAction s =
 gHelp : Nat -> Nat -> String
 gHelp r c= "r [row] [column] or reveal [row] [column] to reveal the given square\n\
         \\t where row is between 0 and " ++ show (r - 1) ++ ", and column is between\ 
-        \0 and " ++ show (c - 1) ++ ".\n\
+        \ 0 and " ++ show (c - 1) ++ ".\n\
         \d or display to display the board\n\
         \q or quit to exit\n\
         \h or help to display help\n"
