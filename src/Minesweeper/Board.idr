@@ -2,9 +2,11 @@ module Minesweeper.Board
 
 import Data.Vect 
 import Data.Fin
+
 import Effects
 import Effect.Random
 import Effect.StdIO
+import Effect.System
 
 -- |X,Y co-ordinate
 data Pos = MkPos Nat Nat 
@@ -310,11 +312,16 @@ generateMines' x y nMines = rewrite (natPlusZ nMines) in
           rewrite (plusSuccRightSucc l k) in 
             generateMines'' l (mine :: mines)     
 
-generateMines : Nat -> Nat -> (n : Nat) -> {[RND]} Eff (Maybe (Vect n Pos))
+generateMines : Nat -> Nat -> (n : Nat) -> {[SYSTEM, RND]} Eff (Maybe (Vect n Pos))
 generateMines x y nMines = 
   if (x * y < nMines) 
     then return Nothing
     else do
-      mines <- generateMines' x y nMines
-      return $ Just mines
+      -- Use current system time as RNG seed
+      t <- time 
+      srand (cast t)
+      return $ Just !(generateMines' x y nMines)
+      
+
+
 

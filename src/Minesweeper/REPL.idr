@@ -11,6 +11,7 @@ import Control.Monad.State
 import Effects
 import Effect.Random
 import Effect.StdIO
+import Effect.System
 
 
 instance Show Difficulty where
