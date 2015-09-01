@@ -9,9 +9,6 @@ I created this as an exercise to learn the Idris programming language.
   * Expert: 16x30 board with 99 mines
 
 #TODO
-- Cascading reveal algorithm implementation (i.e. when revealing a square which surrounds no mines then all
-the squares surrounding that square are then revealed)
-- Setting RNG seed for generating mine positions
 - Possible GUI and/or ncurses IO implementation 
 
 #Required
