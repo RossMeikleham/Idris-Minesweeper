@@ -168,7 +168,7 @@ incAdjacentSquares {rows} {cols} (MkPos x y) board = do
     top <- if y > 0 then incBoardSquare (y - 1) x rightSide else return rightSide
     bot <- if y < (rows - 1) then incBoardSquare (y + 1) x top else return top 
 
-    return top --bot
+    return bot
 
 
 
@@ -219,11 +219,12 @@ checkLose (MkBoard v) = foldl(\b, v => (checkRow v) || b) False v
                       _ => b || False) False v 
  
 
+
 -- Reveals the given position, returns the new Board state
 -- if a square is revealed, otherwise returns an error message
 -- if the square has already been revealed or it's out of bounds
 reveal : Pos -> Board rows cols -> Either String (Board rows cols)
-reveal (MkPos x y) (MkBoard v) = do
+reveal (MkPos x y) board@(MkBoard v) = do
   rowPos <- maybeToEither "Out Of Bounds." (natToFin y rows) 
   colPos <- maybeToEither "Out Of Bounds." (natToFin x cols)
   let row  =index rowPos v
@@ -232,11 +233,32 @@ reveal (MkPos x y) (MkBoard v) = do
  
   case square of
     (MkSquare Revealed _) => Left "Square has already been revealed"
+
+    -- No surrounding mines, reveal all squares surrounding the revealed square
+    (MkSquare Hidden (Safe Z)) => do
+        let newSq = MkSquare Revealed (Safe Z)
+        return (MkBoard (replaceV y (replaceV x newSq row) v)) >>=
+
+          \b => return (revealNoErr (MkPos (x - 1) (y - 1)) b) >>=
+          \b => return (revealNoErr (MkPos (x - 1)  y     ) b) >>=
+          \b => return (revealNoErr (MkPos (x - 1) (y + 1)) b) >>=
+          \b => return (revealNoErr (MkPos x       (y - 1)) b) >>=
+          \b => return (revealNoErr (MkPos x       (y + 1)) b) >>=
+          \b => return (revealNoErr (MkPos (x + 1) (y - 1)) b) >>=
+          \b => return (revealNoErr (MkPos (x + 1) y      ) b) >>=
+          \b => return (revealNoErr (MkPos (x + 1) (y + 1)) b)  
+
     (MkSquare Hidden sq) => do 
         let newSq = MkSquare Revealed sq
         return $ MkBoard (replaceV y (replaceV x newSq row) v)
    
-    
+ -- Reveals the given position, returns the new Board state
+ -- if a square is revealed, otherwise returns the old board state
+ where revealNoErr : Pos -> Board rows cols -> Board rows cols
+       revealNoErr p b = case reveal p b of
+                           (Right newB) => newB
+                           (Left _) => b
+
 
 
 -- | Given x and y dimensions and a vector containing
@@ -295,11 +317,4 @@ generateMines x y nMines =
     else do
       mines <- generateMines' x y nMines
       return $ Just mines
-
-        
-
-showMines : Nat -> Nat -> Nat -> {[RND, STDIO]} Eff ()
-showMines x y nMines = do
-  mines <- generateMines x y nMines
-  putStrLn $ show mines 
 

@@ -91,7 +91,8 @@ playGame' {m} {n} board = do
                                 >>= \_ => playGame' newBoard
 
                     Won => putStrLn (showRevealed newBoard) >>= \_ => putStrLn  "You Win!"
-                    Lost => putStrLn (showRevealed newBoard) >>= \_ => putStrLn  "You Hit a Mine!"
+                    Lost => putStrLn (showRevealed newBoard) >>= \_ => putStrLn  "You Hit a Mine!" >>=  
+                      \_ => putStrLn (showBoard newBoard)
 
             GHelp => putStrLn (gHelp m n) >>= \_ => playGame' board 
             GQuit => putStrLn "Quitting Game..."

@@ -32,5 +32,3 @@ reveal pos@(MkPos x y) = do
       if checkWin newBoard then return Won
       else if checkLose newBoard then return Lost
       else return $ Playing $ "Revealed square in row:" ++ show y ++ " col:" ++  show x ++ "\n"
-
-
