@@ -8,6 +8,8 @@ import Minesweeper.Helper
 
 import Control.Monad.State
 
+import Data.Vect 
+
 import Effects
 import Effect.Random
 import Effect.StdIO

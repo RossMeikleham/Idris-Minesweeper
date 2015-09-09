@@ -319,7 +319,7 @@ generateMines x y nMines =
     else do
       -- Use current system time as RNG seed
       t <- time 
-      srand (cast t)
+      srand t
       return $ Just !(generateMines' x y nMines)
       
 
