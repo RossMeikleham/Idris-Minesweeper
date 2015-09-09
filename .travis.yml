@@ -22,6 +22,7 @@ install:
     - cabal install idris-0.9.19 --only-dependencies
     - travis_wait cabal install idris-0.9.19
          
+    - if [ "$TRAVIS_OS_NAME" == "osx" ]; then export PATH=$PATH:$HOME/Library/Haskell/bin; fi
    
       
 script:
