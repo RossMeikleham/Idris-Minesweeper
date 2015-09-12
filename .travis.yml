@@ -14,17 +14,14 @@ install:
     - if [ "$TRAVIS_OS_NAME" == "linux" ]; then travis_retry sudo apt-get update; fi
     - if [ "$TRAVIS_OS_NAME" == "linux" ]; then travis_retry sudo apt-get install cabal-install-$CABALVER ghc-$GHCVER; fi
     - if [ "$TRAVIS_OS_NAME" == "linux" ]; then export PATH=$HOME/.cabal/bin:/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH; fi
-    
-    - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew update; fi
-    - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew install ghc cabal-install; fi
-    
-    - travis_retry cabal update
-    - cabal install idris-0.9.19 --only-dependencies
-    - travis_wait cabal install idris-0.9.19
+    - if [ "$TRAVIS_OS_NAME" == "linux" ]; then travis_retry cabal update; fi
+    - if [ "$TRAVIS_OS_NAME" == "linux" ]; then cabal install idris-0.9.19 --only-dependencies; fi
+    - if [ "$TRAVIS_OS_NAME" == "linux" ]; then travis_wait cabal install idris-0.9.19; fi
          
-    - if [ "$TRAVIS_OS_NAME" == "osx" ]; then export PATH=$PATH:$HOME/Library/Haskell/bin; fi
-   
-      
+    - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew update; fi
+    - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew install idris; fi
+  
+    
 script:
     - idris --version
     - idris --build minesweeper.ipkg
