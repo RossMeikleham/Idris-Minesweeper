@@ -16,25 +16,27 @@ import Effect.StdIO
 import Effect.System
 
 
-instance Show Difficulty where
+implementation Show Difficulty where
   show Easy = "Easy"
   show Medium = "Medium"
   show Hard = "Hard"
 
 
 intro : String
-intro =  "___  ________ _   _  _____ _____  _    _ _____ ___________ ___________\n\ 
-         \|  \\/  |_   _| \\ | ||  ___/  ___|| |  | |  ___|  ___| ___ \\  ___| ___ \\\n\
-         \| .  . | | | |  \\| || |__ \\ `--. | |  | | |__ | |__ | |_/ / |__ | |_/ /\n\ 
-         \| |\\/| | | | | . ` ||  __| `--. \\| |/\\| |  __||  __||  __/|  __||    /\n\ \| |  | |_| |_| |\\  || |___/\\__/ /\\  /\\  / |___| |___| |   | |___| |\\ \\\n\
-         \\\_|  |_/\\___/\\_| \\_/\\____/\\____/  \\/  \\/\\____/\\____/\\_|   \\____/\\_| \\_|\n\
-         \\n Written by Ross Meikleham 2015"
+intro =  """
+___  ________ _   _  _____ _____  _    _ _____ ___________ ___________ 
+|  \/  |_   _| \ | ||  ___/  ___|| |  | |  ___|  ___| ___ \  ___| ___ \
+| .  . | | | |  \| || |__ \ `--. | |  | | |__ | |__ | |_/ / |__ | |_/ /
+| |\/| | | | | . ` ||  __| `--. \| |/\| |  __||  __||  __/|  __||    /
+| |  | |_| |_| |\  || |___/\__/ /\  /\  / |___| |___| |   | |___| |\ \
+\_|  |_/\___/\_| \_/\____/\____/  \/  \/\____/\____/\_|   \____/\_| \_|
+Written by Ross Meikleham 2015"""
 
 
 
 invalid : String -> String
-invalid s = "Unknown option \"" ++ s ++ "\"\n\
-                      \Enter h or help to display the list of possible options"
+invalid s = "Unknown option \"" ++ s ++ "\". " ++ 
+  "Enter h or help to display the list of possible options"
 
 data GameAction = 
    GQuit
@@ -53,7 +55,7 @@ parseGameAction "d" = GShow
 parseGameAction "display" = GShow
 parseGameAction s = 
   case parseReveal (words s) of
-    (Just Pos) => Reveal Pos
+    (Just pos) => Reveal pos
     (Nothing) => GInvalid (invalid s)
 
   where 
@@ -61,7 +63,7 @@ parseGameAction s =
         parsePos strRow strCol = do
           row <- readNat strRow
           col <- readNat strCol
-          return $ MkPos col row
+          pure $ MkPos col row
         
         parseReveal : List String -> Maybe Pos
         parseReveal (command :: row :: col :: []) =
@@ -74,13 +76,13 @@ parseGameAction s =
 
 
 gHelp : Nat -> Nat -> String
-gHelp r c= "r [row] [column] or reveal [row] [column] to reveal the given square\n\
-        \\t where row is between 0 and " ++ show (r - 1) ++ ", and column is between\ 
-        \ 0 and " ++ show (c - 1) ++ ".\n\
-        \d or display to display the board\n\
-        \q or quit to exit\n\
-        \h or help to display help\n"
-
+gHelp (S r) (S c) = ("r [row] [column] or reveal [row] [column] to reveal the given square\n" ++
+  "\t where row is between 0 and " ++ show r  ++ ", and column is between 0 and " ++ 
+  show c ++ ".\n" ++
+  "d or display to display the board\n" ++
+  "q or quit to exit\n" ++
+  "h or help to display help\n")
+gHelp _ _ = "Error with row/column size\n"
 
 playGame' : Board m n -> IO ()
 playGame' {m} {n} board = do
@@ -88,14 +90,14 @@ playGame' {m} {n} board = do
           str <- getLine
           let option = parseGameAction str
           case option of
-            (Reveal pos) => let (res, newBoard) = runState (reveal pos) board in
+            (Reveal pos) => let (res, newBoard) = runState (revealPos pos) board in
                   case res of
                     Playing str => putStrLn (showBoard newBoard) >>= \_ => putStrLn str 
                                 >>= \_ => playGame' newBoard
 
                     Won => putStrLn (showRevealed newBoard) >>= \_ => putStrLn  "You Win!"
-                    Lost => putStrLn (showRevealed newBoard) >>= \_ => putStrLn  "You Hit a Mine!" >>=  
-                      \_ => putStrLn (showBoard newBoard)
+                    Lost => putStrLn (showBoard newBoard) >>= \_ => putStrLn  "You Hit a Mine!" >>=  
+                      \_ => putStrLn (showRevealed newBoard)
 
             GHelp => putStrLn (gHelp m n) >>= \_ => playGame' board 
             GQuit => putStrLn "Quitting Game..."
@@ -129,11 +131,12 @@ difficulty = "Enter difficulty> "
 
 
 difficultyHelp : String
-difficultyHelp = "b or beginner to start an easy game\n\
-                 \i or intermediate to start a medium difficulty game\n\
-                 \e or expert to start a hard game\n\
-                 \h or help to display this help option\n\
-                 \q or quit to exit to the main menu\n"
+difficultyHelp = """
+b or beginner to start an easy game
+i or intermediate to start a medium difficulty game
+e or expert to start a hard game
+h or help to display this help option
+q or quit to exit to the main menu"""
 
         
 parseDifficulty : String -> DifficultyAction
@@ -187,9 +190,10 @@ parseOption "help" = Help
 parseOption i = Invalid i
 
 help : String
-help = "p or play to start a game\n\
-       \q or quit to exit\n\
-       \h or help to display help\n"
+help = """
+p or play to start a game
+q or quit to exit
+h or help to display help"""
 
 
 mainMenu : IO ()
@@ -206,7 +210,7 @@ mainMenu = do
 
 
 
-
+export
 repl : IO ()
 repl = do
   putStrLn intro

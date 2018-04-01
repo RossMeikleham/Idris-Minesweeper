@@ -9,15 +9,15 @@ import Effect.StdIO
 import Effect.System
 
 -- |X,Y co-ordinate
+public export
 data Pos = MkPos Nat Nat 
 
 -- | Two positions are the same if their x and y co-oridinates
 --   are equal
-instance Eq Pos where 
+implementation Eq Pos where 
   (MkPos x1 y1) == (MkPos x2 y2) = (x1 == x2) && (y1 == y2)
 
-
-instance Show Pos where
+implementation Show Pos where
   show (MkPos x y) = "(x : " ++ show x ++ ", y : " ++ show y ++ ")"
 
 -- | A Square can either contain a mine or be adjacent to
@@ -34,6 +34,7 @@ data Square = MkSquare Visibility SqState
 
 
 -- | Board is m * n squares
+export
 data Board : Nat -> Nat -> Type where
    MkBoard : (Vect m (Vect n Square)) -> Board m n
 
@@ -48,6 +49,7 @@ concatSV (v :: vs) = v ++ (concatSV vs)
 
 
 -- | Display the board, hiding any hidden squares
+export
 showBoard : (Board rows cols) -> String
 showBoard {rows} {cols} board = if rows == 0 
   then "Empty"
@@ -71,6 +73,7 @@ showBoard {rows} {cols} board = if rows == 0
 
 
 -- | Display the board, revealing all hidden squares
+export
 showRevealed : (Board rows cols) -> String
 showRevealed {rows} {cols} board = if rows == 0 
   then "Empty"
@@ -138,7 +141,7 @@ incBoardSquare {rows} {cols} y x (MkBoard v) = do
     (MkSquare vis (Safe n)) => (MkSquare vis (Safe (S n)))
     sq => sq
     
-  return $ MkBoard (replaceV y (replaceV x newSquare row) v)
+  pure $ MkBoard (replaceV y (replaceV x newSquare row) v)
 
 
 -- | Attempt to increment the mine adjacency value for all 8 adjacent squares
@@ -147,35 +150,63 @@ incBoardSquare {rows} {cols} y x (MkBoard v) = do
 --   not incremented
 incAdjacentSquares : Pos -> (Board rows cols) -> Maybe (Board rows cols)
 incAdjacentSquares {rows} {cols} (MkPos x y) board = do
-
     -- Increment squares to the left of the mine
-    leftSide <- if x > 0 
-      then do 
-        left <- incBoardSquare y (x - 1) board
-        topLeft <- if y > 0 then incBoardSquare (y - 1) (x - 1) left else return left
-        if y < (rows - 1) then incBoardSquare (y + 1) (x - 1) topLeft else return topLeft
-        
-      else return board
-    
+    leftSide <- incLeftSide board x 
     -- Increment squares to the right side of the mine
-    rightSide <- if x < (cols - 1)
-      then do
-        right <- incBoardSquare y (x + 1) leftSide 
-        topRight <- if y > 0 then incBoardSquare (y - 1) (x + 1) right else return right
-        if y < (rows - 1) then incBoardSquare (y + 1) (x + 1) topRight else return topRight
-      
-      else return leftSide
-
+    rightSide <- incRightSide leftSide cols
     -- Increment squares above and below the mine
-    top <- if y > 0 then incBoardSquare (y - 1) x rightSide else return rightSide
-    bot <- if y < (rows - 1) then incBoardSquare (y + 1) x top else return top 
+    top <- incTop rightSide y 
+    bot <- incBot top rows 
 
-    return bot
+    pure bot
 
+  where
+        incTopLeft : (Board rows cols) -> Nat -> Nat -> Maybe (Board rows cols)
+        incTopLeft prev Z _ = pure prev
+        incTopLeft prev _ Z = pure prev
+        incTopLeft prev (S y) (S x) = incBoardSquare y x prev
+        
+        incBotLeft : (Board rows cols) -> Nat -> Nat -> Maybe (Board rows cols)
+        incBotLeft prev Z _ = pure prev
+        incBotLeft prev _ Z = pure prev
+        incBotLeft prev (S r) (S x) = if y < r then incBoardSquare (y + 1) x prev else pure prev
+        
+        incLeftSide : (Board rows cols) -> Nat -> Maybe (Board rows cols)
+        incLeftSide prev Z = pure prev
+        incLeftSide prev (S x) = do
+            left <- incBoardSquare y x prev
+            topLeft <- incTopLeft left y (S x)
+            incBotLeft topLeft rows (S x)
 
+        incTopRight : (Board rows cols) -> Nat -> Maybe (Board rows cols)
+        incTopRight prev Z = pure prev
+        incTopRight prev (S y) = incBoardSquare y (x + 1) prev
+       
+        incBotRight : (Board rows cols) -> Nat -> Maybe (Board rows cols)
+        incBotRight prev Z = pure prev
+        incBotRight prev (S r) = if y < r then incBoardSquare (y + 1) (x + 1) prev else pure prev
+  
+        incRightSide : (Board rows cols) -> Nat -> Maybe (Board rows cols)
+        incRightSide prev Z = pure prev
+        incRightSide prev (S c) = if x < c
+          then do
+            right <- incBoardSquare y (x + 1) prev
+            topRight <- incTopRight right y
+            incBotRight topRight rows
+          else
+            pure prev
+
+        incTop : (Board rows cols) -> Nat -> Maybe (Board rows cols)
+        incTop prev Z = pure prev
+        incTop prev (S y) = incBoardSquare y x prev
+
+        incBot : Board rows cols -> Nat -> Maybe (Board rows cols)
+        incBot prev Z = pure prev
+        incBot prev (S r) = if y < r then incBoardSquare (y + 1) x prev else pure prev
 
 -- | Given row and column  dimensions of board with mines generate 
 --   the board
+export
 createBoard : (n : Nat) ->  (m : Nat) -> Vect k Pos -> Maybe (Board m n)
 createBoard cols rows mines = do
       let initialBoard = MkBoard $ map (\row => generateRow row cols) (iterateV rows (+1) 0)
@@ -196,7 +227,7 @@ createBoard cols rows mines = do
           calculateState : Board m n -> Maybe (Board m n)
           calculateState board = calculateState' board mines
             where calculateState' : Board m n -> Vect k Pos -> Maybe (Board m n) 
-                  calculateState' board Nil = return board
+                  calculateState' board Nil = pure board
                   calculateState' board (x :: xs) = do 
                     res <- (incAdjacentSquares x board) 
                     calculateState' res xs
@@ -204,6 +235,7 @@ createBoard cols rows mines = do
 
 -- | Determines if the Board is in a "Win" State
 --   i.e. all hidden squares are mines
+export
 checkWin : Board m n -> Bool
 checkWin (MkBoard v) = foldl (\b, v => (checkRow v) && b) True v -- Check each row matches win condition
   where checkRow : Vect n Square -> Bool 
@@ -214,6 +246,7 @@ checkWin (MkBoard v) = foldl (\b, v => (checkRow v) && b) True v -- Check each r
 
 -- | Determines if the Board is in a "Lose" State
 --   i.e. a revealed square is a mine
+export
 checkLose : Board m n -> Bool
 checkLose (MkBoard v) = foldl(\b, v => (checkRow v) || b) False v
   where checkRow v = foldl (\b, (MkSquare vis st) => case (vis, st) of
@@ -221,10 +254,10 @@ checkLose (MkBoard v) = foldl(\b, v => (checkRow v) || b) False v
                       _ => b || False) False v 
  
 
-
 -- Reveals the given position, returns the new Board state
 -- if a square is revealed, otherwise returns an error message
 -- if the square has already been revealed or it's out of bounds
+export
 reveal : Pos -> Board rows cols -> Either String (Board rows cols)
 reveal (MkPos x y) board@(MkBoard v) = do
   rowPos <- maybeToEither "Out Of Bounds." (natToFin y rows) 
@@ -239,20 +272,18 @@ reveal (MkPos x y) board@(MkBoard v) = do
     -- No surrounding mines, reveal all squares surrounding the revealed square
     (MkSquare Hidden (Safe Z)) => do
         let newSq = MkSquare Revealed (Safe Z)
-        return (MkBoard (replaceV y (replaceV x newSq row) v)) >>=
+        pure (MkBoard (replaceV y (replaceV x newSq row) v)) >>=
 
-          \b => return (revealNoErr (MkPos (x - 1) (y - 1)) b) >>=
-          \b => return (revealNoErr (MkPos (x - 1)  y     ) b) >>=
-          \b => return (revealNoErr (MkPos (x - 1) (y + 1)) b) >>=
-          \b => return (revealNoErr (MkPos x       (y - 1)) b) >>=
-          \b => return (revealNoErr (MkPos x       (y + 1)) b) >>=
-          \b => return (revealNoErr (MkPos (x + 1) (y - 1)) b) >>=
-          \b => return (revealNoErr (MkPos (x + 1) y      ) b) >>=
-          \b => return (revealNoErr (MkPos (x + 1) (y + 1)) b)  
+          \b => pure (revealTop b y) >>=
+          \b => pure (revealLeft b x) >>=
+          \b => pure (revealTopLeft b y x) >>=
+          \b => pure (revealNoErr (MkPos x       (y + 1)) b) >>=
+          \b => pure (revealNoErr (MkPos (x + 1) y      ) b) >>=
+          \b => pure (revealNoErr (MkPos (x + 1) (y + 1)) b)  
 
     (MkSquare Hidden sq) => do 
         let newSq = MkSquare Revealed sq
-        return $ MkBoard (replaceV y (replaceV x newSq row) v)
+        pure $ MkBoard (replaceV y (replaceV x newSq row) v)
    
  -- Reveals the given position, returns the new Board state
  -- if a square is revealed, otherwise returns the old board state
@@ -261,7 +292,18 @@ reveal (MkPos x y) board@(MkBoard v) = do
                            (Right newB) => newB
                            (Left _) => b
 
+       revealLeft : Board rows cols -> Nat -> Board rows cols
+       revealLeft prev Z = prev
+       revealLeft prev (S x) = revealNoErr (MkPos x (y + 1)) (revealNoErr (MkPos x y) prev)
+        
+       revealTop : Board rows cols -> Nat -> Board rows cols
+       revealTop prev Z = prev
+       revealTop prev (S y) = revealNoErr (MkPos (x + 1) y) (revealNoErr (MkPos x y) prev)
 
+       revealTopLeft : Board rows cols -> Nat -> Nat -> Board rows cols
+       revealTopLeft prev Z _ = prev
+       revealTopLeft prev _ Z = prev
+       revealTopLeft prev y x = revealNoErr (MkPos x y) prev
 
 -- | Given x and y dimensions and a vector containing
 --   the positions of already generated mines, places a mine
@@ -274,8 +316,8 @@ generateMine x y mines = do
 
   -- If position already taken then attempt to regenerate
   if mine `elem` mines 
-    then return $ placeRightMine mine 
-    else return mine
+    then pure $ placeRightMine mine 
+    else pure mine
   
   
  where placeRightMine : Pos -> Pos
@@ -306,21 +348,21 @@ generateMines' x y nMines = rewrite (natPlusZ nMines) in
                                 generateMines'' nMines Nil
  
   where generateMines'' : (m : Nat) -> (Vect k Pos) -> {[RND]} Eff (Vect (m + k)  Pos)
-        generateMines'' Z v = return v
-        generateMines'' {k} (S l) mines = do
-          mine <- generateMine x y mines 
-          rewrite (plusSuccRightSucc l k) in 
-            generateMines'' l (mine :: mines)     
-
+        generateMines'' Z v = pure v
+        generateMines'' {k} (S l) mines = 
+					(generateMine x y mines) >>= 
+					\mine => rewrite (plusSuccRightSucc l k) in generateMines'' l (mine ::mines) 
+        
+export          
 generateMines : Nat -> Nat -> (n : Nat) -> {[SYSTEM, RND]} Eff (Maybe (Vect n Pos))
 generateMines x y nMines = 
   if (x * y < nMines) 
-    then return Nothing
+    then pure Nothing
     else do
       -- Use current system time as RNG seed
       t <- time 
       srand t
-      return $ Just !(generateMines' x y nMines)
+      pure $ Just !(generateMines' x y nMines)
       
 
 

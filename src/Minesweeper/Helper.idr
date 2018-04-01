@@ -1,7 +1,7 @@
 -- Contains Helper functions
 module Minesweeper.Helper
 
-
+export
 readNat : String -> Maybe Nat
 readNat s = go 0 (unpack s) where
 
