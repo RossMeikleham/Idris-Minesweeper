@@ -24,7 +24,7 @@ Enter "h" or "help" at anytime in the REPL to display a list of options and what
 # Running with Docker
 ```
 docker build -t idris-minesweeper .
-docker run --entrypoint="/app/minesweeper" idris-minesweeper
+docker run -it --entrypoint="/app/minesweeper" idris-minesweeper
 ```
 
 # Images
