@@ -14,7 +14,7 @@ I created this as an exercise to learn the Idris programming language.
 - Possible GUI and/or ncurses IO implementation 
 
 # Required
-- Idris 0.9.19 (see the [Idris-Dev](https://github.com/idris-lang/Idris-dev/) repository) 
+- Idris 1.2.0+ (see the [Idris-Dev](https://github.com/idris-lang/Idris-dev/) repository) 
 
 # Building The Package
 `idris --build minesweeper.ipkg`
